@@ -62,7 +62,8 @@ def handle_pagure_message(msg, config, suffix):
         return None
 
     # Format the assignee field to match github (i.e. in a list)
-    msg['msg']['pullrequest']['assignee'] = [msg['msg']['pullrequest']['assignee']]
+    msg['msg']['pullrequest']['assignee'] = [
+        msg['msg']['pullrequest']['assignee']]
 
     # Update suffix, Pagure suffix only register as comments
     if msg['msg']['pullrequest']['status'] == 'Closed':
@@ -128,7 +129,8 @@ def handle_github_message(msg, config, suffix):
         msg['msg']['pull_request']['comments'] = comments
 
     # Search for the user
-    reporter = github_client.get_user(msg['msg']['pull_request']['user']['login'])
+    reporter = github_client.get_user(
+        msg['msg']['pull_request']['user']['login'])
     # Update the reporter field in the message (to match Pagure format)
     if reporter.name:
         msg['msg']['pull_request']['user']['fullname'] = reporter.name
@@ -159,49 +161,6 @@ def handle_github_message(msg, config, suffix):
         msg['msg']['pull_request']['milestone'] = msg['msg']['pull_request']['milestone']['title']
 
     return i.PR.from_github(upstream, msg['msg']['pull_request'], suffix, config)
-
-
-def pagure_prs(upstream, config):
-    """
-    Creates a Generator for all Pagure PRs in upstream repo.
-
-    :param String upstream: Upstream Repo
-    :param Dict config: Config Dict
-    :returns: Pagure Issue object generator
-    :rtype: sync2jira.intermediary.PR
-    """
-    # Build our our URL
-    base = config['sync2jira'].get('pagure_url', 'https://pagure.io')
-    url = base + '/api/0/' + upstream + '/pull-requests'
-
-    # Get our filters
-    params = config['sync2jira']\
-        .get('filters', {})\
-        .get('pagure', {}) \
-        .get(upstream, {})
-
-    # Make a GET call to Pagure.io
-    response = requests.get(url, params=params)
-
-    # Catch if we have an error
-    if not bool(response):
-        try:
-            reason = response.json()
-        except Exception:
-            reason = response.text
-        raise IOError("response: %r %r %r" % (response, reason, response.request.url))
-
-    # Extract and format our data
-    data = response.json()['requests']
-
-    # Reformat Assignee
-    for pr in data:
-        pr['assignee'] = [pr['assignee']]
-
-    # Build our final list of data and yield
-    prs = (i.PR.from_pagure(upstream, pr, 'open', config) for pr in data)
-    for pr in prs:
-        yield pr
 
 
 def github_prs(upstream, config):

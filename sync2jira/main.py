@@ -101,10 +101,6 @@ pr_handlers = {
     'github.issue.comment': u_pr.handle_github_message,
     'github.pull_request.reopened': u_pr.handle_github_message,
     'github.pull_request.closed': u_pr.handle_github_message,
-    # Pagure
-    'pagure.pull-request.new': u_pr.handle_pagure_message,
-    'pagure.pull-request.comment.added': u_pr.handle_pagure_message,
-    'pagure.pull-request.initial_comment.edited': u_pr.handle_pagure_message,
 }
 DATAGREPPER_URL = "http://apps.fedoraproject.org/datagrepper/raw"
 INITIALIZE = os.getenv('INITIALIZE', '0')
@@ -180,63 +176,6 @@ def listen(config):
         handle_msg(msg, suffix, config)
 
 
-def initialize_issues(config, testing=False, repo_name=None):
-    """
-    Initial initialization needed to sync any upstream \
-    repo with JIRA. Goes through all issues and \
-    checks if they're already on JIRA / Need to be \
-    created.
-
-    :param Dict config: Config dict for JIRA
-    :param Bool testing: Flag to indicate if we are testing. Default false
-    :param String repo_name: Optional individual repo name. If defined we will only sync the provided repo
-    :returns: Nothing
-    """
-    log.info("Running initialization to sync all issues from upstream to jira")
-    log.info("Testing flag is %r", config['sync2jira']['testing'])
-    mapping = config['sync2jira']['map']
-    for upstream in mapping.get('pagure', {}).keys():
-        if 'issue' not in mapping.get('pagure', {}).get(upstream, {}).get('sync', []):
-            continue
-        if repo_name is not None and upstream != repo_name:
-            continue
-        for issue in u_issue.pagure_issues(upstream, config):
-            try:
-                d_issue.sync_with_jira(issue, config)
-            except Exception as e:
-                log.error(f"Failed on {issue}\nException: {e}")
-                raise
-    log.info("Done with pagure issue initialization.")
-
-    for upstream in mapping.get('github', {}).keys():
-        if 'issue' not in mapping.get('github', {}).get(upstream, {}).get('sync', []):
-            continue
-        if repo_name is not None and upstream != repo_name:
-            continue
-        # Try and except for github API limit
-        try:
-            for issue in u_issue.github_issues(upstream, config):
-                try:
-                    d_issue.sync_with_jira(issue, config)
-                except Exception:
-                    log.error("   Failed on %r", issue)
-                    raise
-        except Exception as e:
-            if "API rate limit exceeded" in e.__str__():
-                # If we've hit out API limit:
-                # Sleep for 1 hour and call our function again
-                log.info("Hit Github API limit. Sleeping for 1 hour...")
-                sleep(3600)
-                if not testing:
-                    initialize_issues(config)
-                return
-            else:
-                if not config['sync2jira']['develop']:
-                    # Only send the failure email if we are not developing
-                    report_failure(config)
-                    raise
-    log.info("Done with github issue initialization.")
-
 
 def initialize_pr(config, testing=False, repo_name=None):
     """
@@ -253,15 +192,6 @@ def initialize_pr(config, testing=False, repo_name=None):
     log.info("Running initialization to sync all PRs from upstream to jira")
     log.info("Testing flag is %r", config['sync2jira']['testing'])
     mapping = config['sync2jira']['map']
-    for upstream in mapping.get('pagure', {}).keys():
-        if 'pullrequest' not in mapping.get('pagure', {}).get(upstream, {}).get('sync', []):
-            continue
-        if repo_name is not None and upstream != repo_name:
-            continue
-        for pr in u_pr.pagure_prs(upstream, config):
-            if pr:
-                d_pr.sync_with_jira(pr, config)
-    log.info("Done with pagure PR initialization.")
 
     for upstream in mapping.get('github', {}).keys():
         if 'pullrequest' not in mapping.get('github', {}).get(upstream, {}).get('sync', []):
@@ -435,9 +365,6 @@ def main(runtime_test=False, runtime_config=None):
     try:
         if str(INITIALIZE) == '1':
             log.info("Initialization True")
-            # Initialize issues
-            log.info("Initializing Issues...")
-            initialize_issues(config)
             log.info("Initializing PRs...")
             initialize_pr(config)
             if runtime_test:
@@ -478,6 +405,7 @@ def report_failure(config):
               text=html_text)
 
 
+# zdtsw: dont think we use it
 def list_managed():
     """
     Function to list URL for issues under map in config.
@@ -487,10 +415,6 @@ def list_managed():
     config = load_config()
     mapping = config['sync2jira']['map']
     warnings.simplefilter("ignore")
-
-    for upstream in mapping.get('pagure', {}).keys():
-        for issue in u_issue.pagure_issues(upstream, config):
-            print(issue.url)
 
     for upstream in mapping.get('github', {}).keys():
         for issue in u_issue.github_issues(upstream, config):
@@ -508,15 +432,6 @@ def close_duplicates():
     log.info("Testing flag is %r", config['sync2jira']['testing'])
     mapping = config['sync2jira']['map']
     warnings.simplefilter("ignore")
-
-    for upstream in mapping.get('pagure', {}).keys():
-        for issue in u_issue.pagure_issues(upstream, config):
-            try:
-                d_issue.close_duplicates(issue, config)
-            except Exception:
-                log.error("Failed on %r", issue)
-                raise
-    log.info("Done with pagure duplicates.")
 
     for upstream in mapping.get('github', {}).keys():
         for issue in u_issue.github_issues(upstream, config):

@@ -18,12 +18,13 @@
 # Authors:  Ralph Bean <rbean@redhat.com>
 
 config = {
+    # mandatory 
     'sync2jira': {
         # Admins to be cc'd in duplicate emails
-        'admins': [{'admin_username': 'admin_email@demo.com'}],
+        'admins': [{'admin_username': 'wenzhou@redhat.com'}],
 
         # Mailing list email to send failure-email notices too
-        'mailing-list': 'some_email@demo.com',
+        'mailing-list': 'wenzhou@redhat.com',
 
         # Listen on the message bus
         'listen': True,
@@ -34,41 +35,42 @@ config = {
         # Set to True when developing to disable sentinel query
         'develop': False,
 
-        # Your Github token
-        'github_token': 'YOUR_TOKEN',
+        # Your Github token, or we might have rate-limited 5000 per hour
+        'github_token': 'GITHUB_API_TOKEN',
 
         # If we should update a Confluence page for stats
-        'confluence_statistics': False
+        'confluence_statistics': False,
 
         'legacy_matching': False,
 
-        'default_jira_instance': 'example',
-        'jira_username': 'your-bot-account',
+        # for the very first time, or can just use 'recent' method
+        'initialize': True,
+
+        'default_jira_instance': 'issues.redhat.com',
+        'jira_username': 'wenzhou',
+
+        # Mandatory
         'jira': {
             'example': {
                 'options': {
-                    'server': 'https://some_jira_server_somewhere.com',
+                    'server': 'https://issues.redhat.com',
                     'verify': True,
                 },
-                'token_auth': 'YOUR_TOKEN',
+                'token_auth': 'JIRA_ACCESS_TOKEN',
             },
         },
 
         'map': {
-            'pagure': {
-                'Demo_project': {'project': 'FACTORY', 'component': 'gitbz',
-                                 'updates': [...], 'sync': ['pullrequest', 'issue']},
-                # 'koji': { 'project': 'BREW', 'component': None, },
-            },
             'github': {
-                'GITHUB_USERNAME/Demo_project': {'project': 'FACTORY', 'component': 'gitbz',
-                                                 'updates': [...], 'sync': ['pullrequest', 'issue']},
+                'red-hat-data-services/notebooks': {'project': 'red-hat-data-services', 'component': 'notebooks','updates': [...], 'sync': ['pullrequest']},
+                'red-hat-data-services/odh-deployer': {'project': 'red-hat-data-services', 'component': 'odh-deployer','updates': [...], 'sync': ['pullrequest']},
             },
         },
+
         'filters': {
             'github': {
-                # Only sync multi-type tickets from bodhi.
-                'fedora-infra/bodhi': {'status': 'open', 'milestone': 4, },
+                # set as upstream
+                'red-hat-data-services/notebooks': {'status': 'open', 'milestone': 4, },
             },
         }
     },

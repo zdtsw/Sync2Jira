@@ -9,7 +9,7 @@ parameters:
 - name: IMAGE_URL
   displayName: Image URL:TAG to pull from
   required: true
-  value: "quay.io/redhat-aqe/sync2jira:openshift-build"
+  value: "quay.io/wenzhou/sync2jira:openshift-build"
 - name: PRIVATE_KEY
   displayName: Private Key to use (base64)
   requiered: true
